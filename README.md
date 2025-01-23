@@ -1,5 +1,5 @@
 # Done Set 3 Auto Setup
-Automated setup of Done Set for Miyoo Mini SD cards
+Automated setup of Done Set 3 for Miyoo Mini SD cards
 
 
 **The Goal:** Create an automated tool to extract everything the user wants to a Miyoo Mini SD card, most likely running [Onion OS](https://github.com/OnionUI/Onion).
