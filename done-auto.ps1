@@ -1,4 +1,4 @@
-## Setup script by Doakyz, QuackWalks and A.I.
+## Setup script by Doakyz, QuackWalks and A.I. for use with Done Set 3
 
 # Initialize GUI resources
 Add-Type -AssemblyName System.Windows.Forms
