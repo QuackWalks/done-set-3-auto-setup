@@ -1,8 +1,8 @@
-﻿## Setup script by Doakyz
+## Setup script by Doakyz
 
 
 ## Changelog
-## V3 - Rework of code by QuackWalks and *shudders* Microsoft Copilot for use with Done Set 3
+## V3 - Rework of code by QuackWalks and AI for use with Done Set 3
 ## V2 - Complete rework of code, additional user input settings based on feedback from Quack Walks
 ## V1 - Initial proof of concept, extracts zips into target directory, only works in powershell ISE
 ##
@@ -43,6 +43,10 @@ function Show-FolderDialog {
 # Get the extraction location using the GUI folder selection dialog
 Write-Host "Select the extraction path."
 $extractionPath = Show-FolderDialog -initialDirectory ([System.Environment]::GetFolderPath('Desktop'))
+if (-not $extractionPath) {
+    Write-Host "No folder selected. Exiting script."
+    exit
+}
 
 # Check if the extraction path exists, if not, create it
 if (-not (Test-Path -Path $extractionPath)) {
@@ -175,33 +179,6 @@ function Update-ProgressBar {
     Write-Host -NoNewline -Object "`r[$progressBar] $percentage% complete"
 }
 
-# Function to get the current sleep settings
-function Get-SleepSettings {
-    return @{
-        SleepOnAC = (powercfg -query SCHEME_CURRENT SUB_SLEEP STANDBYIDLE).Split()[4]
-        SleepOnBattery = (powercfg -query SCHEME_CURRENT SUB_SLEEP STANDBYIDLE).Split()[4]
-    }
-}
-
-# Function to set the sleep settings
-function Set-SleepSettings {
-    param (
-        [string]$onAC,
-        [string]$onBattery
-    )
-    powercfg -change -standby-timeout-ac $onAC
-    powercfg -change -standby-timeout-dc $onBattery
-}
-
-# Save the current sleep settings
-$currentSleepSettings = Get-SleepSettings
-
-# Disable sleep
-Set-SleepSettings -onAC 0 -onBattery 0
-
-# Notify user about sleep setting change
-Write-Host "Sleep settings have been disabled to prevent the computer from sleeping during extraction."
-
 # Base zip file to always extract
 $baseZipFile = "Done Set 3.zip"
 
@@ -271,12 +248,6 @@ if ($proceedWithExtraction) {
         Write-Host "An error occurred during extraction: $_"
     }
 }
-
-# Restore the original sleep settings
-Set-SleepSettings -onAC $currentSleepSettings.SleepOnAC -onBattery $currentSleepSettings.SleepOnBattery
-
-# Notify user about restoring sleep settings
-Write-Host "Sleep settings have been restored to their original values."
 
 # Notify user that the process is complete and prompt for manual exit
 Write-Host "The extraction process is complete. Please press Enter to exit."
