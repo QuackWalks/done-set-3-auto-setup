@@ -1,11 +1,4 @@
-## Setup script by Doakyz
-
-
-## Changelog
-## V3 - Rework of code by QuackWalks and AI for use with Done Set 3
-## V2 - Complete rework of code, additional user input settings based on feedback from Quack Walks
-## V1 - Initial proof of concept, extracts zips into target directory, only works in powershell ISE
-##
+## Setup script by Doakyz, QuackWalks and A.I.
 
 # Initialize GUI resources
 Add-Type -AssemblyName System.Windows.Forms
@@ -82,9 +75,9 @@ function Prompt-AdditionalZipFiles {
         # Prompt for model type
         $validChoice = $false
         while (-not $validChoice) {
-            Write-Host "What model do you have?"
-            Write-Host "1. Plus Model"
-            Write-Host "2. V4 Model"
+            Write-Host "What Miyoo Mini model do you have?"
+            Write-Host "1. Plus, v2 or v3 model"
+            Write-Host "2. v4 model"
             $modelChoice = Read-Host
             switch ($modelChoice) {
                 1 {
@@ -176,26 +169,33 @@ function Update-ProgressBar {
         [int]$percentage
     )
     $progressBar = "*" * ([math]::Round($percentage / 5))  # Each asterisk represents 5%
-    Write-Host -NoNewline -Object "`r[$progressBar] $percentage% complete"
+    Write-Host -NoNewline -Object "r[$progressBar] $percentage% complete"
 }
 
-# Base zip file to always extract
+# Ask the user if they want to extract Done Set 3
+Write-Host "Do you want to extract Done Set 3 Roms and BIOS?"
+$extractDoneSet3 = Prompt-YesNoQuestion
+
 $baseZipFile = "Done Set 3.zip"
+$zipFilePaths = @()
+
+if ($extractDoneSet3) {
+    $zipFilePaths += $baseZipFile
+}
 
 # Get additional zip files to be extracted
-$zipFilePaths = Prompt-AdditionalZipFiles -extractionPath $extractionPath
+$additionalZipFiles = Prompt-AdditionalZipFiles -extractionPath $extractionPath
+$zipFilePaths += $additionalZipFiles
 
 # Prompt the user for confirmation to start the extraction
-Write-Host "`n"
+Write-Host "n"
 Write-Host "Please review your selections before proceeding with the extraction."
-Write-Host "`n"
+Write-Host "n"
 Write-Host "Zip files to be extracted:"
 foreach ($zipFilePath in $zipFilePaths) {
     Write-Host "- $zipFilePath"
 }
-Write-Host "`n"
-Write-Host "Base zip file: $baseZipFile"
-Write-Host "`n"
+Write-Host "n"
 Write-Host "Extraction path: $extractionPath"
 Write-Host ""
 
@@ -217,36 +217,26 @@ while ($proceedWithExtraction -notin "yes", "no") {
 }
 
 # Perform the extraction with the -Force parameter to overwrite existing files
-if ($proceedWithExtraction) {
-    try {
-        # Extract the base zip file
-        if (Test-Path $baseZipFile) {
-            Expand-Archive -Path $baseZipFile -DestinationPath $extractionPath -Force
-            Write-Host "Extracted $baseZipFile to $extractionPath"
+try {
+    # Extract selected zip files
+    $totalFiles = $zipFilePaths.Count
+    $extractedFiles = 0
+
+    foreach ($zipFilePath in $zipFilePaths) {
+        if (Test-Path $zipFilePath) {
+            Expand-Archive -Path $zipFilePath -DestinationPath $extractionPath -Force
+            Write-Host "Extracted $zipFilePath to $extractionPath"
+            $extractedFiles++
+            $percentage = [math]::Round(($extractedFiles / $totalFiles) * 100)
+            Update-ProgressBar -percentage $percentage
         } else {
-            Write-Host "File not found: $baseZipFile"
+            Write-Host "File not found: $zipFilePath"
         }
-
-        # Extract additional zip files
-        $totalFiles = $zipFilePaths.Count + 1  # Including the base zip file
-        $extractedFiles = 1
-
-        foreach ($zipFilePath in $zipFilePaths) {
-            if (Test-Path $zipFilePath) {
-                Expand-Archive -Path $zipFilePath -DestinationPath $extractionPath -Force
-                Write-Host "Extracted $zipFilePath to $extractionPath"
-                $extractedFiles++
-                $percentage = [math]::Round(($extractedFiles / $totalFiles) * 100)
-                Update-ProgressBar -percentage $percentage
-            } else {
-                Write-Host "File not found: $zipFilePath"
-            }
-        }
-
-        Write-Host "`nExtraction completed. Files extracted to: $extractionPath"
-    } catch {
-        Write-Host "An error occurred during extraction: $_"
     }
+
+    Write-Host "nExtraction completed. Files extracted to: $extractionPath"
+} catch {
+    Write-Host "An error occurred during extraction: $_"
 }
 
 # Notify user that the process is complete and prompt for manual exit
