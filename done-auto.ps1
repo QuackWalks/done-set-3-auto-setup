@@ -188,16 +188,12 @@ $additionalZipFiles = Prompt-AdditionalZipFiles -extractionPath $extractionPath
 $zipFilePaths += $additionalZipFiles
 
 # Prompt the user for confirmation to start the extraction
-Write-Host "n"
 Write-Host "Please review your selections before proceeding with the extraction."
-Write-Host "n"
 Write-Host "Zip files to be extracted:"
 foreach ($zipFilePath in $zipFilePaths) {
     Write-Host "- $zipFilePath"
 }
-Write-Host "n"
 Write-Host "Extraction path: $extractionPath"
-Write-Host ""
 
 $confirmationPrompt = "Do you want to proceed with the extraction? (yes/no)"
 $proceedWithExtraction = $null
