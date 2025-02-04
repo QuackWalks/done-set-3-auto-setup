@@ -230,7 +230,7 @@ try {
         }
     }
 
-    Write-Host "nExtraction completed. Files extracted to: $extractionPath"
+    Write-Host "Extraction completed. Files extracted to: $extractionPath"
 } catch {
     Write-Host "An error occurred during extraction: $_"
 }
