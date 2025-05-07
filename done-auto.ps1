@@ -46,6 +46,16 @@ if (-not (Test-Path -Path $extractionPath)) {
     New-Item -ItemType Directory -Path $extractionPath | Out-Null
 }
 
+# Function to check available disk space (in GB)
+function Get-AvailableDiskSpace {
+    param(
+        [string]$path
+    )
+    $drive = (Get-Item $path).PSDrive.Name
+    $diskInfo = Get-WmiObject Win32_LogicalDisk -Filter "DeviceID='${drive}:'" | Select-Object FreeSpace
+    return [math]::Round($diskInfo.FreeSpace / 1GB, 2)
+}
+
 # Function to prompt for yes or no answers
 function Prompt-YesNoQuestion {
     while ($true) {
@@ -59,6 +69,18 @@ function Prompt-YesNoQuestion {
         } else {
             Write-Host "Invalid choice. Please enter 'y' or 'n'."
         }
+    }
+}
+
+# Check if the SD card is smaller than 100GB
+$skipPlayStationGames = $false
+$availableSpace = Get-AvailableDiskSpace -path $extractionPath
+if ($availableSpace -lt 100) {
+    Write-Host "Your SD card has less than 100GB of free space ($availableSpace GB available)."
+    Write-Host "PlayStation games require significant space. Would you like to skip PlayStation games?"
+    if (Prompt-YesNoQuestion) {
+        $skipPlayStationGames = $true
+        Write-Host "PlayStation games will be skipped during extraction."
     }
 }
 
@@ -152,12 +174,16 @@ function Prompt-AdditionalZipFiles {
     }
 
     # PS1 Addon for 256GB SD Cards
-    Write-Host "Would you like to install the PS1 addon for 256GB SD cards?"
-    if (Prompt-YesNoQuestion) {
-        $ps1AddonZipFile = "PS1 Addon for 256gb SD Cards.zip"
-        if ($ps1AddonZipFile -ne $null) {
-            $additionalZipFiles += $ps1AddonZipFile
+    if (-not $skipPlayStationGames) {
+        Write-Host "Would you like to install the PS1 addon for 256GB SD cards?"
+        if (Prompt-YesNoQuestion) {
+            $ps1AddonZipFile = "PS1 Addon for 256gb SD Cards.zip"
+            if ($ps1AddonZipFile -ne $null) {
+                $additionalZipFiles += $ps1AddonZipFile
+            }
         }
+    } else {
+        Write-Host "Skipping PS1 addon option as PlayStation games will not be installed."
     }
 
     return $additionalZipFiles
@@ -194,6 +220,9 @@ foreach ($zipFilePath in $zipFilePaths) {
     Write-Host "- $zipFilePath"
 }
 Write-Host "Extraction path: $extractionPath"
+if ($skipPlayStationGames) {
+    Write-Host "PlayStation games will be skipped during extraction."
+}
 
 $confirmationPrompt = "Do you want to proceed with the extraction? (yes/no)"
 $proceedWithExtraction = $null
@@ -220,8 +249,46 @@ try {
 
     foreach ($zipFilePath in $zipFilePaths) {
         if (Test-Path $zipFilePath) {
-            Expand-Archive -Path $zipFilePath -DestinationPath $extractionPath -Force
-            Write-Host "Extracted $zipFilePath to $extractionPath"
+            if ($skipPlayStationGames) {
+                # Create a temporary extraction directory
+                $tempDir = Join-Path $env:TEMP "TempExtractionDir"
+                if (Test-Path $tempDir) {
+                    Remove-Item -Path $tempDir -Recurse -Force
+                }
+                New-Item -ItemType Directory -Path $tempDir | Out-Null
+                
+                # Extract to temp directory first
+                Expand-Archive -Path $zipFilePath -DestinationPath $tempDir -Force
+                
+                # Copy non-PlayStation content to final destination
+                Get-ChildItem -Path $tempDir -Recurse | Where-Object {
+                    -not ($_.FullName -like "*\PS\*")
+                } | ForEach-Object {
+                    $relativePath = $_.FullName.Substring($tempDir.Length + 1)
+                    $destinationPath = Join-Path $extractionPath $relativePath
+                    
+                    if ($_.PSIsContainer) {
+                        if (-not (Test-Path $destinationPath)) {
+                            New-Item -ItemType Directory -Path $destinationPath | Out-Null
+                        }
+                    } else {
+                        $destinationFolder = Split-Path -Parent $destinationPath
+                        if (-not (Test-Path $destinationFolder)) {
+                            New-Item -ItemType Directory -Path $destinationFolder -Force | Out-Null
+                        }
+                        Copy-Item -Path $_.FullName -Destination $destinationPath -Force
+                    }
+                }
+                
+                # Clean up temp directory
+                Remove-Item -Path $tempDir -Recurse -Force
+                Write-Host "Extracted $zipFilePath to $extractionPath (skipping PlayStation content)"
+            } else {
+                # Normal extraction without skipping content
+                Expand-Archive -Path $zipFilePath -DestinationPath $extractionPath -Force
+                Write-Host "Extracted $zipFilePath to $extractionPath"
+            }
+            
             $extractedFiles++
             $percentage = [math]::Round(($extractedFiles / $totalFiles) * 100)
             Update-ProgressBar -percentage $percentage
